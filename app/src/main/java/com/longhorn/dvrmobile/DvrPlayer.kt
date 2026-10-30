@@ -100,6 +100,7 @@ fun HttpVideoPlayer(
 
     val lifecycleOwner = LocalLifecycleOwner.current
     val fullscreenChange by rememberUpdatedState(onFullscreenChange)
+    val currentFullscreen by rememberUpdatedState(fullscreen)
     DisposableEffect(player, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_PAUSE) player.pause()
@@ -112,7 +113,8 @@ fun HttpVideoPlayer(
         factory = {
             PlayerView(it).apply {
                 setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
-                setFullscreenButtonClickListener { fullscreenChange(it) }
+                // Compose owns fullscreen state; don't rely on PlayerView's cached toggle state.
+                setFullscreenButtonClickListener { fullscreenChange(!currentFullscreen) }
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -143,14 +145,15 @@ fun MediaPreviewDialog(
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     DisposableEffect(activity, fullscreen) {
-        val originalOrientation = activity?.requestedOrientation
-        if (fullscreen) {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        activity?.requestedOrientation = if (fullscreen) {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
         onDispose {
-            if (fullscreen && originalOrientation != null) {
-                activity?.requestedOrientation = originalOrientation
-            }
+            // UNSPECIFIED can leave the phone in landscape, especially with rotation locked.
+            // Also restore portrait if the preview is removed while still fullscreen.
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
     Dialog(
