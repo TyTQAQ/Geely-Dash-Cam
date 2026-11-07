@@ -100,7 +100,6 @@ fun HttpVideoPlayer(
 
     val lifecycleOwner = LocalLifecycleOwner.current
     val fullscreenChange by rememberUpdatedState(onFullscreenChange)
-    val currentFullscreen by rememberUpdatedState(fullscreen)
     DisposableEffect(player, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_PAUSE) player.pause()
@@ -113,8 +112,8 @@ fun HttpVideoPlayer(
         factory = {
             PlayerView(it).apply {
                 setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
-                // Compose owns fullscreen state; don't rely on PlayerView's cached toggle state.
-                setFullscreenButtonClickListener { fullscreenChange(!currentFullscreen) }
+                // Media3 also calls this listener when Compose synchronizes the button state.
+                setFullscreenButtonClickListener { isFullscreen -> fullscreenChange(isFullscreen) }
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
